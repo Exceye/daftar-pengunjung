@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daftar Pengunjung Lab Komputer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#eef0f3;--card:#fff;--ink:#17202b;--muted:#5d6978;--line:#cfd5dd;--accent:#f2b705;--ok:#1d7a4d;--err:#b3261e}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;display:flex;justify-content:center;padding:20px 16px}
+  main{width:100%;max-width:440px}
+  header{border-left:8px solid var(--accent);padding:4px 0 4px 14px;margin-bottom:18px}
+  h1{font:700 30px/1.05 "Barlow Condensed",sans-serif;margin:0}
+  header p{margin:4px 0 0;color:var(--muted)}
+  form{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+  label{display:block;font-weight:600;margin:0 0 14px}
+  input,select{display:block;width:100%;margin-top:5px;padding:12px;font:inherit;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+  input[readonly]{background:#f4f5f7;color:var(--muted)}
+  .hp{position:absolute;left:-9999px}
+  button{width:100%;padding:14px;font:600 17px Barlow,sans-serif;background:var(--ink);color:#fff;border:0;border-radius:6px;cursor:pointer}
+  button:disabled{opacity:.6;cursor:wait}
+  #msg{margin-top:14px;font-weight:600;min-height:1.5em}
+  #msg.ok{color:var(--ok)}#msg.err{color:var(--err)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Daftar Pengunjung Lab Komputer</h1>
+    <p>Isi sebelum menggunakan lab.</p>
+  </header>
+  <form id="f" autocomplete="off">
+    <label>Tanggal
+      <input id="tgl" readonly>
+    </label>
+    <label>Nama
+      <input name="nama" required maxlength="60" placeholder="Nama lengkap">
+    </label>
+    <label>Kelas
+      <select name="kelas" required>
+        <option value="">Pilih kelas</option>
+      </select>
+    </label>
+    <label>Tujuan
+      <select name="tujuan" id="tujuan" required>
+        <option value="">Pilih tujuan</option>
+        <option>Pembelajaran</option>
+        <option>Praktik / tugas</option>
+        <option>Ujian</option>
+        <option>Ekskul</option>
+        <option>Mengerjakan proyek</option>
+        <option>Lainnya</option>
+      </select>
+    </label>
+    <label id="lain" hidden>Tujuan lainnya
+      <input name="tujuan_lain" maxlength="80" placeholder="Jelaskan singkat">
+    </label>
+    <input class="hp" name="website" tabindex="-1" aria-hidden="true">
+    <button id="btn" type="submit">Kirim kehadiran</button>
+    <div id="msg" role="status"></div>
+  </form>
+</main>
+<script>
+// Ganti dengan URL Web App Apps Script (berakhiran /exec)
+const API_URL = "GANTI_DENGAN_URL_WEB_APP";
+const COOLDOWN_MS = 60000;
+
+const f = document.getElementById("f"), msg = document.getElementById("msg"), btn = document.getElementById("btn");
+const sel = f.kelas;
+["X","XI","XII"].forEach(t => ["TKRO","TP","TEI"].forEach(j => {
+  const g = document.createElement("optgroup");
+  g.label = t + " " + j;
+  [1,2,3,4].forEach(n => { const v = t + " " + j + " " + n; g.appendChild(new Option(v, v)); });
+  sel.appendChild(g);
+}));
+
+document.getElementById("tgl").value = new Date().toLocaleDateString("id-ID", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+
+const lain = document.getElementById("lain");
+document.getElementById("tujuan").addEventListener("change", e => {
+  lain.hidden = e.target.value !== "Lainnya";
+  f.tujuan_lain.required = !lain.hidden;
+});
+
+function show(t, c){ msg.textContent = t; msg.className = c; }
+
+f.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (f.website.value) return;
+  let last = 0;
+  try { last = +localStorage.getItem("lastSubmit") || 0; } catch(_){}
+  if (Date.now() - last < COOLDOWN_MS) return show("Tunggu sebentar sebelum mengirim lagi.", "err");
+
+  const tujuan = f.tujuan.value === "Lainnya" ? "Lainnya: " + f.tujuan_lain.value.trim() : f.tujuan.value;
+  btn.disabled = true; show("Mengirim...", "");
+  try {
+    await fetch(API_URL, {
+      method: "POST", mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify({nama: f.nama.value.trim(), kelas: f.kelas.value, tujuan})
+    });
+    try { localStorage.setItem("lastSubmit", Date.now()); } catch(_){}
+    f.reset(); lain.hidden = true;
+    show("Terkirim. Terima kasih, silakan masuk.", "ok");
+  } catch(err) {
+    show("Gagal mengirim. Periksa koneksi lalu coba lagi.", "err");
+  }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
