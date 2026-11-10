@@ -55,8 +55,9 @@
         <option>Lainnya</option>
       </select>
     </label>
-    <label id="lain" hidden>Tujuan lainnya
-      <input name="tujuan_lain" maxlength="80" placeholder="Jelaskan singkat">
+    <!-- 'hidden' dihapus agar kolom ini selalu tampil -->
+    <label>Keterangan
+      <input name="tujuan_lain" id="tujuan_lain" maxlength="80" placeholder="Opsional: Detail kunjungan">
     </label>
     <input class="hp" name="website" tabindex="-1" aria-hidden="true">
     <button id="btn" type="submit">Kirim kehadiran</button>
@@ -64,8 +65,7 @@
   </form>
 </main>
 <script>
-// URL Web App Apps Script kamu
-const API_URL = "https://script.google.com/macros/s/AKfycbzQFU1FxYl95v4RAQM_kC77Cf6CqRVNyD4_yC-uFO7gaNWoxDsowDce6H3dq1bLQm90/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwDu8yhDFDbOPH05MPOVU-2TAZwOa__fb7KRCd7Q6P1pyJ9nS9z33VISFHwNeaCB5R9/exec";
 const COOLDOWN_MS = 60000;
 
 const f = document.getElementById("f"), msg = document.getElementById("msg"), btn = document.getElementById("btn");
@@ -79,10 +79,16 @@ const sel = f.kelas;
 
 document.getElementById("tgl").value = new Date().toLocaleDateString("id-ID", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
 
-const lain = document.getElementById("lain");
+const inputKet = document.getElementById("tujuan_lain");
 document.getElementById("tujuan").addEventListener("change", e => {
-  lain.hidden = e.target.value !== "Lainnya";
-  f.tujuan_lain.required = !lain.hidden;
+  // Jika pilih "Lainnya", form keterangan wajib diisi. Kalau yang lain, opsional.
+  if(e.target.value === "Lainnya"){
+    inputKet.required = true;
+    inputKet.placeholder = "Wajib diisi: sebutkan tujuannya";
+  } else {
+    inputKet.required = false;
+    inputKet.placeholder = "Opsional: Detail kunjungan";
+  }
 });
 
 function show(t, c){ msg.textContent = t; msg.className = c; }
@@ -94,25 +100,28 @@ f.addEventListener("submit", async e => {
   try { last = +localStorage.getItem("lastSubmit") || 0; } catch(_){}
   if (Date.now() - last < COOLDOWN_MS) return show("Tunggu sebentar sebelum mengirim lagi.", "err");
 
-  // Pemisahan tujuan utama dan keterangan (jika memilih Lainnya)
   const tujuanVal = f.tujuan.value;
-  const keteranganVal = tujuanVal === "Lainnya" ? f.tujuan_lain.value.trim() : "-";
+  const teksKet = f.tujuan_lain.value.trim();
+  
+  // Ambil teks yang diketik. Jika kosong sama sekali, baru berikan tanda "-"
+  const keteranganVal = teksKet !== "" ? teksKet : "-";
 
   btn.disabled = true; show("Mengirim...", "");
   try {
     await fetch(API_URL, {
       method: "POST", mode: "no-cors",
       headers: {"Content-Type": "text/plain;charset=utf-8"},
-      // Menyertakan variabel keterangan ke dalam payload JSON
       body: JSON.stringify({
         nama: f.nama.value.trim(), 
         kelas: f.kelas.value, 
         tujuan: tujuanVal,
-        keterangan: keteranganVal
+        keterangan: keteranganVal // Mengirim keterangan apa pun tujuan yang dipilih
       })
     });
     try { localStorage.setItem("lastSubmit", Date.now()); } catch(_){}
-    f.reset(); lain.hidden = true;
+    f.reset(); 
+    // Reset kembali placeholder
+    inputKet.placeholder = "Opsional: Detail kunjungan";
     show("Terkirim. Terima kasih, silakan masuk.", "ok");
   } catch(err) {
     show("Gagal mengirim. Periksa koneksi lalu coba lagi.", "err");
