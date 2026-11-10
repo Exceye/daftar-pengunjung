@@ -64,7 +64,7 @@
   </form>
 </main>
 <script>
-// Ganti dengan URL Web App Apps Script (berakhiran /exec)
+// URL Web App Apps Script kamu
 const API_URL = "https://script.google.com/macros/s/AKfycbwDu8yhDFDbOPH05MPOVU-2TAZwOa__fb7KRCd7Q6P1pyJ9nS9z33VISFHwNeaCB5R9/exec";
 const COOLDOWN_MS = 60000;
 
@@ -94,13 +94,22 @@ f.addEventListener("submit", async e => {
   try { last = +localStorage.getItem("lastSubmit") || 0; } catch(_){}
   if (Date.now() - last < COOLDOWN_MS) return show("Tunggu sebentar sebelum mengirim lagi.", "err");
 
-  const tujuan = f.tujuan.value === "Lainnya" ? "Lainnya: " + f.tujuan_lain.value.trim() : f.tujuan.value;
+  // Pemisahan tujuan utama dan keterangan (jika memilih Lainnya)
+  const tujuanVal = f.tujuan.value;
+  const keteranganVal = tujuanVal === "Lainnya" ? f.tujuan_lain.value.trim() : "-";
+
   btn.disabled = true; show("Mengirim...", "");
   try {
     await fetch(API_URL, {
       method: "POST", mode: "no-cors",
       headers: {"Content-Type": "text/plain;charset=utf-8"},
-      body: JSON.stringify({nama: f.nama.value.trim(), kelas: f.kelas.value, tujuan})
+      // Menyertakan variabel keterangan ke dalam payload JSON
+      body: JSON.stringify({
+        nama: f.nama.value.trim(), 
+        kelas: f.kelas.value, 
+        tujuan: tujuanVal,
+        keterangan: keteranganVal
+      })
     });
     try { localStorage.setItem("lastSubmit", Date.now()); } catch(_){}
     f.reset(); lain.hidden = true;
